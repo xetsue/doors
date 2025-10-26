@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoreDoors</title>
+    <style>
+        :root {
+            --text-color: #ffffff;
+            --font-family: 'Monospace', monospace;
+        }
+        html, body { height: 100%; margin: 0; overflow: hidden; }
+        body {
+            background-color: #000;
+            color: var(--text-color);
+            font-family: var(--font-family);
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            position: relative;
+        }
+        #sceneBackgroundVideo { position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; display: none; }
+        * { box-sizing: border-box; }
+        .main-container {
+            display: flex; flex-direction: column;
+            width: 100%;
+            height: calc(100vh - 2rem);
+            margin: auto; border: none; padding: 1rem;
+            overflow: auto;
+            align-items: center;
+            z-index: 1;
+        }
+        .panel { position: relative; overflow: hidden; background-size: cover; background-position: center; }
+        .panel-background-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
+        .media-panel { width: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; text-align: center; min-height: 100px; flex-shrink: 0; }
+        .dialogue-panel { padding: 1rem; min-height: 80px; overflow: auto; flex-shrink: 0; cursor: pointer; }
+        .speaker-name { font-weight: bold; margin-bottom: 0.5rem; min-height: 1.2em; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
+        .dialogue-text { min-height: 1.2em; white-space: pre-wrap; }
+        .controls-panel { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; align-items: center; padding: 1rem; min-height: 80px; overflow-y: auto; flex-shrink: 0; }
+        .control-option-btn {
+            flex-grow: 1; min-width: 150px; position: relative; cursor: pointer; overflow: hidden; z-index: 0;
+            font-family: inherit;
+            padding: 0.5rem 1rem;
+            transition: all 0.2s ease;
+        }
+        .control-option-btn > * { position: relative; z-index: 1; }
+        .control-option-btn:hover { filter: brightness(1.2); }
+        .control-option-btn:active { transform: scale(0.98); }
+        #editorTooltip {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            padding: 0.5rem;
+            max-width: 300px;
+            word-wrap: break-word;
+            background-color: #111111;
+            color: #ffffff; 
+            border: 1px solid #555;
+            font-size: 0.9em; 
+            font-family: var(--font-family); 
+        }
+    </style>
+</head>
+<body>
+    <video id="sceneBackgroundVideo" autoplay muted loop></video>
+    <div class="main-container" id="mainContainer">
+        <div id="mediaPanel" class="media-panel panel"></div>
+        <div id="dialoguePanel" class="dialogue-panel panel">
+            <div id="speakerName" class="speaker-name"></div>
+            <div id="dialogueText" class="dialogue-text"></div>
+        </div>
+        <div id="controlsPanel" class="controls-panel panel"></div>
+    </div>
+    
+    <div id="editorTooltip"></div>
+    <div id="audioContainer"></div>
+
+    <script>
+        const allScenes = [{"sceneName":"Intro","main":{"backgroundType":"video","backgroundColor":"rgba(0, 0, 0, 1)","backgroundImage":"https://github.com/xetsue/xetsue.github.io/releases/download/Cats/From.KlickPin.CF.Pins.by.you.Pinterest.V.mp4","audioFile":"","audioFileSource":"local","audioVolume":100,"backgroundVideoMuted":true,"backgroundVideoVolume":100,"backgroundScale":100,"mediaPanelHeight":39,"dialoguePanelHeight":16,"optionsPanelHeight":35,"panelGap":1,"padding":0,"outline":"1px solid #333333"},"media":{"backgroundColor":"rgba(0, 0, 0, 0.13)","borderWidth":"1px","borderColor":"#333333","borderStyle":"solid","borderRadius":"0px","backgroundType":"color","backgroundImage":"","backdropFilter":"blur(0px)","boxShadow":"none","width":48,"positionX":0,"contentScale":93,"mediaFile":"https://i.pinimg.com/originals/a0/d5/81/a0d581666d26dd9c66bf8ed395cba948.gif","mediaFileMuted":true},"dialogue":{"speaker":"Note","text":"It's raining, you have to take shelter before rain and cold get to you. You are presented with two doors infront of you.","animation":"glitch-type","animationSpeed":"48","audioFile":"","audioFileSource":"local","audioVolume":100,"lineHeight":"1.5","panel":{"backgroundColor":"rgba(15, 15, 15, 0.4)","borderWidth":"1px","borderColor":"#333333","borderStyle":"solid","borderRadius":"0px","backgroundType":"color","backgroundImage":"","backdropFilter":"blur(10px)","boxShadow":"none","width":78,"positionX":0},"speakerStyle":{"color":"#ffffff","fontSize":"1.2em","fontFamily":"Monospace, monospace","fontWeight":"bold","fontStyle":"normal","textDecoration":"none"},"textStyle":{"color":"#ffffff","fontSize":"1em","fontFamily":"Monospace, monospace","fontWeight":"normal","fontStyle":"normal","textDecoration":"none"}},"controls":{"panel":{"backgroundColor":"rgba(15, 15, 15, 0.4)","borderWidth":"1px","borderColor":"#333333","borderStyle":"solid","borderRadius":"0px","backgroundType":"color","backgroundImage":"","backdropFilter":"blur(10px)","boxShadow":"none","width":78,"positionX":0,"layout":"wrap","columns":3},"buttons":[{"text":"Go through the left door.","targetScene":"0","hoverHint":"You feel a sense of warmth but there seem to be stench of iron coming from inside.","clickSound":"","clickSoundSource":"local","clickSoundVolume":100,"style":{"backgroundColor":"rgba(0, 0, 0, 1)","borderWidth":"2px","borderColor":"#333333","borderStyle":"outset","borderRadius":"0px","backgroundType":"color","backgroundImage":"","backdropFilter":"blur(0px)","boxShadow":"none","color":"#ffffff","fontSize":"1em","fontFamily":"Monospace, monospace","fontWeight":"normal","fontStyle":"normal","textDecoration":"none"},"activeStyle":{"backgroundColor":"rgba(255, 255, 255, 0.1)","borderColor":"#FFFFFF"},"hintStyle":{"backgroundColor":"rgba(17, 17, 17, 1)","borderWidth":"1px","borderColor":"#555555","borderStyle":"solid","borderRadius":"0px","backgroundType":"color","backgroundImage":"","backdropFilter":"blur(0px)","boxShadow":"none","color":"#ffffff","fontSize":"0.9em","fontFamily":"Monospace, monospace","fontWeight":"normal","fontStyle":"normal","textDecoration":"none"}},{"text":"Go through the right door.","targetScene":"0","hoverHint":"You wonder why there's no air flowing out at all.","clickSound":"","clickSoundSource":"local","clickSoundVolume":100,"style":{"backgroundColor":"rgba(0, 0, 0, 1)","borderWidth":"2px","borderColor":"#333333","borderStyle":"outset","borderRadius":"0px","backgroundType":"color","backgroundImage":"","backdropFilter":"blur(0px)","boxShadow":"none","color":"#ffffff","fontSize":"1em","fontFamily":"Monospace, monospace","fontWeight":"normal","fontStyle":"normal","textDecoration":"none"},"activeStyle":{"backgroundColor":"rgba(255, 255, 255, 0.1)","borderColor":"#FFFFFF"},"hintStyle":{"backgroundColor":"rgba(17, 17, 17, 1)","borderWidth":"1px","borderColor":"#555555","borderStyle":"solid","borderRadius":"0px","backgroundType":"color","backgroundImage":"","backdropFilter":"blur(0px)","boxShadow":"none","color":"#ffffff","fontSize":"0.9em","fontFamily":"Monospace, monospace","fontWeight":"normal","fontStyle":"normal","textDecoration":"none"}}]}},{"sceneName":"0","main":{"backgroundType":"image","backgroundColor":"rgba(0, 0, 0, 1)","backgroundImage":"https://i.pinimg.com/1200x/7f/fe/e5/7ffee5e3586ad307dd6bdb574e441d71.jpg","audioFile":"","audioFileSource":"local","audioVolume":100,"backgroundVideoMuted":true,"backgroundVideoVolume":100,"backgroundScale":50,"mediaPanelHeight":40,"dialoguePanelHeight":19,"optionsPanelHeight":25,"panelGap":1,"padding":1,"outline":"1px solid #333333"},"media":{"backgroundColor":"rgba(255, 255, 255, 0)","borderWidth":"1px","borderColor":"#333333","borderStyle":"none","borderRadius":"0px","backgroundType":"color","backgroundImage":"https://upload.wikimedia.org/wikipedia/commons/5/59/Empty.png","backdropFilter":"blur(0px)","boxShadow":"none","width":100,"positionX":0,"contentScale":100,"mediaFile":"https://upload.wikimedia.org/wikipedia/commons/5/59/Empty.png","mediaFileMuted":true},"dialogue":{"speaker":"System","text":"Well. you've reached the end of the demo. I should be able to make more of these in the future. See you darling <3","animation":"typing","animationSpeed":"49","audioFile":"","audioFileSource":"local","audioVolume":100,"lineHeight":"1.5","panel":{"backgroundColor":"rgba(15, 15, 15, 0.4)","borderWidth":"1px","borderColor":"#333333","borderStyle":"solid","borderRadius":"0px","backgroundType":"color","backgroundImage":"","backdropFilter":"blur(10px)","boxShadow":"none","width":98,"positionX":0},"speakerStyle":{"color":"#ffffff","fontSize":"1.2em","fontFamily":"Monospace, monospace","fontWeight":"bold","fontStyle":"normal","textDecoration":"none"},"textStyle":{"color":"#ffffff","fontSize":"1em","fontFamily":"Monospace, monospace","fontWeight":"normal","fontStyle":"normal","textDecoration":"none"}},"controls":{"panel":{"backgroundColor":"rgba(15, 15, 15, 0)","borderWidth":"0px","borderColor":"#333333","borderStyle":"none","borderRadius":"0px","backgroundType":"color","backgroundImage":"","backdropFilter":"blur(0px)","boxShadow":"none","width":100,"positionX":0,"layout":"wrap","columns":3},"buttons":[{"text":"Leave","targetScene":"Intro","hoverHint":"","clickSound":"","clickSoundSource":"local","clickSoundVolume":100,"style":{"backgroundColor":"rgba(51, 51, 51, 0.29)","borderWidth":"2px","borderColor":"#333333","borderStyle":"none","borderRadius":"0px","backgroundType":"color","backgroundImage":"","backdropFilter":"blur(10px)","boxShadow":"none","color":"#ffffff","fontSize":"1em","fontFamily":"Monospace, monospace","fontWeight":"normal","fontStyle":"normal","textDecoration":"none"},"activeStyle":{"backgroundColor":"rgba(255, 255, 255, 0.1)","borderColor":"#FFFFFF"},"hintStyle":{"backgroundColor":"rgba(17, 17, 17, 1)","borderWidth":"1px","borderColor":"#555555","borderStyle":"solid","borderRadius":"0px","backgroundType":"color","backgroundImage":"","backdropFilter":"blur(0px)","boxShadow":"none","color":"#ffffff","fontSize":"0.9em","fontFamily":"Monospace, monospace","fontWeight":"normal","fontStyle":"normal","textDecoration":"none"}}]}}];
+        let currentDialogueInterval;
+        let isAnimatingDialogue = false;
+        
+        function applyStyles(element, styles) {
+            Object.keys(styles).forEach(prop => {
+                if (prop !== 'backgroundType' && prop !== 'backgroundImage') {
+                    element.style[prop] = styles[prop] || '';
+                }
+            });
+        }
+
+        function applyBackground(element, bgType, bgImage, bgColor) {
+            const isUrl = (str) => String(str).startsWith('http') || String(str).startsWith('//');
+            let videoEl = element.querySelector('.panel-background-video');
+            if (videoEl) videoEl.remove();
+
+            if (bgType === 'video' && bgImage) {
+                element.style.backgroundImage = 'none';
+                element.style.backgroundColor = 'transparent';
+                videoEl = document.createElement('video');
+                videoEl.className = 'panel-background-video';
+                videoEl.src = isUrl(bgImage) ? bgImage : 'res/' + bgImage;
+                videoEl.autoplay = true; videoEl.muted = true; videoEl.loop = true;
+                element.insertBefore(videoEl, element.firstChild);
+            } else if (bgType === 'image' && bgImage) {
+                element.style.backgroundImage = `url('${isUrl(bgImage) ? bgImage : 'res/' + bgImage}')`;
+                element.style.backgroundSize = 'cover';
+                element.style.backgroundPosition = 'center';
+                element.style.backgroundColor = 'transparent';
+            } else {
+                element.style.backgroundImage = 'none';
+                element.style.backgroundColor = bgColor;
+            }
+        }
+        
+        function renderSceneByHash() {
+            if (currentDialogueInterval) clearInterval(currentDialogueInterval);
+            isAnimatingDialogue = false;
+            
+            const sceneName = window.location.hash.substring(1) || allScenes[0].sceneName;
+            const sceneData = allScenes.find(s => s.sceneName === sceneName) || allScenes[0];
+            if (!sceneData) return;
+
+            const doc = (id) => document.getElementById(id);
+            const mainContainer = doc('mainContainer'), mediaPanel = doc('mediaPanel'), dialoguePanel = doc('dialoguePanel'),
+                  speakerName = doc('speakerName'), dialogueText = doc('dialogueText'), controlsPanel = doc('controlsPanel'),
+                  sceneBackgroundVideo = doc('sceneBackgroundVideo'), audioContainer = doc('audioContainer');
+
+            const { main, media, dialogue, controls } = sceneData;
+            const isUrl = (str) => String(str).startsWith('http') || String(str).startsWith('//');
+            
+            mainContainer.style.gap = (main.panelGap || 1) + 'rem';
+            mainContainer.style.padding = (main.padding || 1) + 'rem';
+            mainContainer.style.outline = main.outline || 'none';
+            
+            const applyPosition = (panel, width, positionX) => {
+                const totalMargin = 100 - (width || 100);
+                const leftMargin = (totalMargin / 2) + (totalMargin / 2) * ((positionX || 0) / 50);
+                panel.style.marginLeft = leftMargin + '%';
+                panel.style.marginRight = (totalMargin - leftMargin) + '%';
+                panel.style.width = (width || 100) + '%';
+            };
+            applyPosition(mediaPanel, media.width, media.positionX);
+            applyPosition(dialoguePanel, dialogue.panel.width, dialogue.panel.positionX);
+            applyPosition(controlsPanel, controls.panel.width, controls.panel.positionX);
+
+            mediaPanel.style.height = (main.mediaPanelHeight || 40) + '%';
+            dialoguePanel.style.height = (main.dialoguePanelHeight || 25) + '%';
+            controlsPanel.style.height = (main.optionsPanelHeight || 25) + '%';
+            
+            document.body.style.backgroundImage = 'none';
+            sceneBackgroundVideo.style.display = 'none';
+            if (main.backgroundType === 'video' && main.backgroundImage) {
+                document.body.style.backgroundColor = '#000000';
+                sceneBackgroundVideo.src = isUrl(main.backgroundImage) ? main.backgroundImage : 'res/' + main.backgroundImage;
+                sceneBackgroundVideo.muted = main.backgroundVideoMuted;
+                sceneBackgroundVideo.volume = (main.backgroundVideoVolume || 100) / 100;
+                sceneBackgroundVideo.style.display = 'block';
+            } else if (main.backgroundType === 'image' && main.backgroundImage) {
+                document.body.style.backgroundColor = '#000000';
+                document.body.style.backgroundImage = `url('${isUrl(main.backgroundImage) ? main.backgroundImage : 'res/' + main.backgroundImage}')`;
+                document.body.style.backgroundSize = (main.backgroundScale || 100) + '%';
+            } else {
+                document.body.style.backgroundColor = main.backgroundColor;
+            }
+            
+            mediaPanel.innerHTML = '';
+            const mediaStyles = { ...media };
+            delete mediaStyles.mediaFile; delete mediaStyles.mediaFileMuted; delete mediaStyles.backgroundType; delete mediaStyles.backgroundImage;
+            delete mediaStyles.width; delete mediaStyles.contentScale; delete mediaStyles.positionX;
+            applyStyles(mediaPanel, mediaStyles);
+            applyBackground(mediaPanel, media.backgroundType, media.backgroundImage, media.backgroundColor);
+
+            const mediaFile = media.mediaFile;
+            const mediaType = mediaFile ? (mediaFile.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image') : null;
+
+            if (mediaFile) {
+                const mediaContent = document.createElement('div');
+                const contentScale = media.contentScale || 100;
+                mediaContent.style.width = contentScale + '%';
+                mediaContent.style.height = contentScale + '%';
+                mediaContent.style.backgroundSize = 'cover';
+                mediaContent.style.backgroundPosition = 'center';
+                
+                if (mediaType === 'image') {
+                    mediaContent.style.backgroundImage = `url('${isUrl(mediaFile) ? mediaFile : 'res/' + mediaFile}')`;
+                } else if (mediaType === 'video') {
+                    const video = document.createElement('video');
+                    video.autoplay = true; 
+                    video.muted = media.mediaFileMuted; 
+                    video.loop = true;
+                    video.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+                    video.src = isUrl(mediaFile) ? mediaFile : 'res/' + mediaFile;
+                    mediaContent.appendChild(video);
+                }
+                mediaPanel.appendChild(mediaContent);
+            }
+            
+            applyStyles(dialoguePanel, dialogue.panel);
+            applyBackground(dialoguePanel, dialogue.panel.backgroundType, dialogue.panel.backgroundImage, dialogue.panel.backgroundColor);
+
+            applyStyles(speakerName, dialogue.speakerStyle);
+            applyStyles(dialogueText, dialogue.textStyle);
+            dialogueText.style.lineHeight = dialogue.lineHeight;
+
+            if (!dialogue.speaker) {
+                speakerName.style.display = 'none';
+            } else {
+                speakerName.style.display = 'block';
+                speakerName.textContent = dialogue.speaker;
+            }
+            
+            applyStyles(controlsPanel, controls.panel);
+            applyBackground(controlsPanel, controls.panel.backgroundType, controls.panel.backgroundImage, controls.panel.backgroundColor);
+            controlsPanel.style.display = controls.panel.layout === 'grid' ? 'grid' : 'flex';
+            controlsPanel.style.gridTemplateColumns = `repeat(${controls.panel.columns}, 1fr)`;
+            
+            controlsPanel.innerHTML = '';
+            controls.buttons.forEach((option, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'control-option-btn';
+                btn.textContent = option.text;
+                btn.dataset.target = option.targetScene;
+                btn.dataset.sound = option.clickSound;
+                btn.dataset.hintShown = 'false';
+                
+                applyStyles(btn, option.style);
+                applyBackground(btn, option.style.backgroundType, option.style.backgroundImage, option.style.backgroundColor);
+                
+                const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+                const performAction = () => {
+                    if (option.clickSound) {
+                        try { 
+                            const clickAudio = new Audio(option.clickSoundSource === 'url' ? option.clickSound : 'res/audio/' + option.clickSound);
+                            clickAudio.volume = (option.clickSoundVolume || 100) / 100;
+                            clickAudio.play();
+                        } catch(e) {}
+                    }
+                    if (option.targetScene) {
+                        window.location.hash = option.targetScene;
+                    }
+                };
+
+                const showHint = () => {
+                    if (!option.hoverHint) return;
+                    const tooltip = doc('editorTooltip');
+                    tooltip.textContent = option.hoverHint;
+                    applyStyles(tooltip, option.hintStyle); 
+                    applyBackground(tooltip, option.hintStyle.backgroundType, option.hintStyle.backgroundImage, option.hintStyle.backgroundColor);
+                    
+                    const rect = btn.getBoundingClientRect();
+                    tooltip.style.display = 'block';
+                    const tooltipRect = tooltip.getBoundingClientRect();
+                    
+                    let top = rect.top - tooltipRect.height - 5;
+                    if (top < 0) top = rect.bottom + 5;
+                    let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+                    if (left < 0) left = 5;
+                    if (left + tooltipRect.width > window.innerWidth) left = window.innerWidth - tooltipRect.width - 5;
+
+                    tooltip.style.top = `${top}px`;
+                    tooltip.style.left = `${left}px`;
+                };
+
+                const hideHint = () => {
+                    doc('editorTooltip').style.display = 'none';
+                };
+
+                if (isMobile) {
+                    btn.addEventListener('click', (e) => {
+                        if (option.hoverHint && btn.dataset.hintShown === 'false') {
+                            e.preventDefault();
+                            doc('editorTooltip').style.display = 'none';
+                            doc('controlsPanel').querySelectorAll('.control-option-btn').forEach(b => b.dataset.hintShown = 'false');
+                            
+                            showHint();
+                            btn.dataset.hintShown = 'true';
+                        } else {
+                            performAction();
+                        }
+                    });
+                } else {
+                    btn.addEventListener('click', (e) => {
+                        performAction();
+                    });
+                    btn.addEventListener('mouseenter', showHint);
+                    btn.addEventListener('mouseleave', hideHint);
+                }
+                
+                btn.addEventListener('mouseenter', () => applyStyles(btn, option.activeStyle));
+                btn.addEventListener('mouseleave', () => {
+                    applyStyles(btn, option.style);
+                    applyBackground(btn, option.style.backgroundType, option.style.backgroundImage, option.style.backgroundColor);
+                    if (!isMobile) hideHint();
+                });
+
+                controlsPanel.appendChild(btn);
+            });
+            
+            if (('ontouchstart' in window) || (navigator.maxTouchPoints > 0)) {
+                document.body.addEventListener('click', (e) => {
+                    const tooltip = doc('editorTooltip');
+                    if (tooltip.style.display === 'block' && !tooltip.contains(e.target) && !e.target.closest('.control-option-btn')) {
+                        tooltip.style.display = 'none';
+                        doc('controlsPanel').querySelectorAll('.control-option-btn').forEach(b => b.dataset.hintShown = 'false');
+                    }
+                }, true);
+            }
+            
+            audioContainer.innerHTML = '';
+            if (main.audioFile) {
+                const bgAudio = document.createElement('audio');
+                bgAudio.src = main.audioFileSource === 'url' ? main.audioFile : 'res/audio/' + main.audioFile;
+                bgAudio.volume = (main.audioVolume || 100) / 100;
+                bgAudio.autoplay = true; bgAudio.loop = true;
+                audioContainer.appendChild(bgAudio);
+            }
+            if (dialogue.audioFile) {
+                const diagAudio = document.createElement('audio');
+                diagAudio.src = dialogue.audioFileSource === 'url' ? dialogue.audioFile : 'res/audio/' + dialogue.audioFile;
+                diagAudio.volume = (dialogue.audioVolume || 100) / 100;
+                diagAudio.autoplay = true;
+                audioContainer.appendChild(diagAudio);
+            }
+            
+            let i = 0;
+            const text = dialogue.text;
+            const anim = dialogue.animation;
+            const speed = dialogue.animationSpeed || 50;
+            dialogueText.textContent = '';
+            dialogueText.style.cssText = 'transition: none; opacity: 1; transform: none; filter: none;';
+            dialogueText.style.lineHeight = dialogue.lineHeight;
+            applyStyles(dialogueText, dialogue.textStyle);
+            
+            const finishAnimation = () => {
+                isAnimatingDialogue = false;
+                if (currentDialogueInterval) clearInterval(currentDialogueInterval);
+                dialogueText.textContent = text;
+                dialogueText.style.transition = 'none';
+                dialogueText.style.opacity = 1;
+                dialogueText.style.transform = 'none';
+                dialogueText.style.filter = 'none';
+            };
+            
+            dialoguePanel.onclick = () => {
+                if (isAnimatingDialogue) {
+                    finishAnimation();
+                }
+            };
+            
+            if (anim === 'none') {
+                dialogueText.textContent = text;
+            } else {
+                isAnimatingDialogue = true;
+                if (anim === 'typing') {
+                    (function type() { if (i < text.length) { dialogueText.textContent += text.charAt(i++); currentDialogueInterval = setTimeout(type, speed); } else { isAnimatingDialogue = false; } })();
+                } else if (anim === 'glitch-type') {
+                    (function glitch() { if (i < text.length) { dialogueText.textContent = text.slice(0, i) + String.fromCharCode(33 + Math.random() * 94); currentDialogueInterval = setTimeout(() => { i++; dialogueText.textContent = text.slice(0, i); if (i < text.length) glitch(); else isAnimatingDialogue = false; }, speed); } else { isAnimatingDialogue = false; } })();
+                } else {
+                    dialogueText.textContent = text;
+                    dialogueText.style.opacity = 0;
+                    if (anim === 'fade') setTimeout(() => { dialogueText.style.transition = 'opacity 0.5s'; dialogueText.style.opacity = 1; setTimeout(() => isAnimatingDialogue = false, 500); }, 10);
+                    if (anim === 'zoom-in') setTimeout(() => { dialogueText.style.transform = 'scale(0.8)'; dialogueText.style.transition = 'all 0.3s'; dialogueText.style.opacity = 1; dialogueText.style.transform = 'scale(1)'; setTimeout(() => isAnimatingDialogue = false, 300); }, 10);
+                    if (anim === 'blur-in') setTimeout(() => { dialogueText.style.filter = 'blur(5px)'; dialogueText.style.transition = 'all 0.3s'; dialogueText.style.opacity = 1; dialogueText.style.filter = 'blur(0)'; setTimeout(() => isAnimatingDialogue = false, 300); }, 10);
+                    if (anim === 'slide-up') setTimeout(() => { dialogueText.style.transform = 'translateY(20px)'; dialogueText.style.transition = 'all 0.3s'; dialogueText.style.opacity = 1; dialogueText.style.transform = 'translateY(0)'; setTimeout(() => isAnimatingDialogue = false, 300); }, 10);
+                    if (anim === 'slide-left') setTimeout(() => { dialogueText.style.transform = 'translateX(20px)'; dialogueText.style.transition = 'all 0.3s'; dialogueText.style.opacity = 1; dialogueText.style.transform = 'translateX(0)'; setTimeout(() => isAnimatingDialogue = false, 300); }, 10);
+                }
+            }
+        }
+        
+        window.addEventListener('hashchange', renderSceneByHash);
+        document.addEventListener('DOMContentLoaded', renderSceneByHash);
+    </script>
+</body>
+</html>
